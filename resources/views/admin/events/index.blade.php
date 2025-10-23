@@ -54,9 +54,20 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-900 dark:text-gray-100">
                                         {{ $event->participants_count }}
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                        {{-- Placeholder Aksi (Edit/Hapus) --}}
-                                        <a href="#" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400">Edit</a>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium flex justify-center space-x-3">
+                                            {{-- Tombol Edit --}}
+                                            <a href="{{ route('admin.events.edit', $event) }}" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400">
+                                                Edit
+                                            </a>
+
+                                            {{-- Tombol Hapus (Menggunakan Form DELETE) --}}
+                                            <form action="{{ route('admin.events.destroy', $event) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus event {{ $event->name }}? Ini akan menghapus SEMUA data peserta terkait!');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-600">
+                                                    Hapus
+                                            </button>
+                                        </form>
                                     </td>
                                 </tr>
                             @empty

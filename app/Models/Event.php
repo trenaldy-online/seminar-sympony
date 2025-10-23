@@ -12,7 +12,7 @@ class Event extends Model
     /**
      * The attributes that are mass assignable.
      */
-    protected $fillable = ['name', 'slug', 'description', 'date', 'is_active'];
+    protected $fillable = ['name', 'slug', 'description', 'date', 'is_active', 'banner_image'];
 
     /**
      * Relasi One-to-Many: Satu Event memiliki banyak Participant

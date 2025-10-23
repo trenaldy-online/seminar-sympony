@@ -40,11 +40,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/dashboard/checkin', [CheckinController::class, 'processCheckin'])->name('checkin.process');
 
     // --- BARU: ROUTE MANAJEMEN EVENT OLEH ADMIN ---
-    Route::prefix('dashboard/events')->name('admin.events.')->group(function () {
-        Route::get('/', [EventController::class, 'index'])->name('index'); // Menampilkan daftar event
-        Route::get('/create', [EventController::class, 'create'])->name('create'); // Menampilkan form buat event
-        Route::post('/', [EventController::class, 'store'])->name('store'); // Menyimpan event baru
-    });
+    // Menggunakan resource untuk generate semua rute CRUD: index, create, store, show, edit, update, destroy
+    Route::resource('dashboard/events', EventController::class)
+        ->names('admin.events')
+        ->except(['show']); // Tidak perlu rute 'show' terpisah, kita hanya perlu 'edit'
 });
 
 require __DIR__.'/auth.php';
