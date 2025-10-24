@@ -9,13 +9,29 @@ use Illuminate\Support\Str;
 
 class ParticipantController extends Controller
 {
-    // 1. Tampilkan formulir pendaftaran
-    public function create()
+    // 1. Tampilkan halaman daftar event / formulir pendaftaran
+    public function create(Request $request)
     {
         // Ambil semua Event yang statusnya aktif
         $activeEvents = Event::where('is_active', true)->get();
 
-        // Lewatkan data Event ke view
+        // Cek apakah ada Event ID di URL (mode tampilkan formulir)
+        $selectedEventId = $request->query('event_id');
+
+        if ($selectedEventId) {
+            // Cek apakah event yang dipilih ada dan aktif
+            $selectedEvent = $activeEvents->where('id', $selectedEventId)->first();
+
+            if (!$selectedEvent) {
+                // Jika event tidak ditemukan atau tidak aktif, redirect kembali ke home
+                return redirect()->route('participant.create')->with('error', 'Event tidak ditemukan atau pendaftaran sudah ditutup.');
+            }
+
+            // MODE 2: Tampilkan Formulir Registrasi
+            return view('participants.register_form', compact('selectedEvent'));
+        }
+
+        // MODE 1: Tampilkan Banner/Slider Event (sesuai permintaan terakhir)
         return view('participants.register', compact('activeEvents'));
     }
 

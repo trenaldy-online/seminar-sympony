@@ -7,9 +7,9 @@ use App\Http\Controllers\ParticipantController;
 use App\Http\Controllers\Admin\EventController;
 
 // Route Halaman Utama
-Route::get('/', function () {
-    return view('welcome');
-});
+// Route::get('/', function () {
+//    return view('welcome');
+// });
 
 // --- ROUTE PESERTA SEMINAR (PUBLIK) ---
 // 1. Tampilkan Formulir Pendaftaran Peserta (Contoh: /daftar)

@@ -7,7 +7,7 @@ use App\Models\Event;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Storage; // Tambahkan ini jika Anda mengimplementasikan upload gambar
+use Illuminate\Support\Facades\Storage;
 
 class EventController extends Controller
 {
@@ -42,14 +42,14 @@ class EventController extends Controller
             'date' => 'required|date',
             'description' => 'nullable|string',
             // Tambahkan 'banner_image' jika Anda mengimplementasikannya
-            // 'banner_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'banner_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
 
         // 2. Logika Upload Gambar Banner (jika ada)
         $bannerPath = null;
         if ($request->hasFile('banner_image')) {
-            $bannerPath = $request->file('banner_image')->store('public/banners');
-            $bannerPath = str_replace('public/', 'storage/', $bannerPath);
+            $filePath = $request->file('banner_image')->store('banners', 'public');
+            $bannerPath = 'storage/' . $filePath;
         }
 
         // 3. Buat slug dari nama event (bersihkan string untuk URL)
@@ -61,7 +61,7 @@ class EventController extends Controller
             'slug' => $slug,
             'date' => $request->date,
             'description' => $request->description,
-            'banner_image' => $bannerPath, // Jika ada
+            'banner_image' => $bannerPath,
             'is_active' => $request->has('is_active'),
         ]);
 
@@ -99,11 +99,15 @@ class EventController extends Controller
         if ($request->hasFile('banner_image')) {
             // Hapus gambar lama jika ada
             if ($event->banner_image) {
-                Storage::delete(str_replace('storage/', 'public/', $event->banner_image));
-            }
-            // Simpan gambar baru
-            $bannerPath = $request->file('banner_image')->store('public/banners');
-            $bannerPath = str_replace('public/', 'storage/', $bannerPath);
+                // Kita hanya perlu path setelah 'storage/'
+            $oldFilePath = str_replace('storage/', '', $event->banner_image);
+            Storage::disk('public')->delete($oldFilePath); // Hapus dari disk 'public'
+        }
+            // Simpan gambar baru ke DISK 'public'
+            $filePath = $request->file('banner_image')->store('banners', 'public');
+            // Format path untuk database
+            $bannerPath = 'storage/' . $filePath;
+
         } else if ($request->input('remove_image')) {
             // Logika Hapus Gambar
             if ($event->banner_image) {
