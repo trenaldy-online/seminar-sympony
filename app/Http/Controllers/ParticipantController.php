@@ -68,7 +68,9 @@ class ParticipantController extends Controller
     // 3. Tampilkan halaman tiket dengan QR Code (Akses: /seminar/ticket/{token})
     public function showTicket($token)
     {
-        $participant = Participant::where('qr_code_token', $token)->firstOrFail();
+        $participant = Participant::where('qr_code_token', $token)
+                                ->with('event')
+                                ->firstOrFail();
 
         // Data yang di-encode ke QR Code adalah URL check-in panitia (POST action)
         // Panitia akan menscan ini, dan scanner akan mengirim token sebagai POST request

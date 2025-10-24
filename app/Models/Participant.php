@@ -30,4 +30,9 @@ class Participant extends Model
     protected $casts = [
         'is_checked_in' => 'boolean', // Pastikan ini dicast sebagai boolean
     ];
+
+    public function event()
+    {
+        return $this->belongsTo(Event::class);
+    }
 }
