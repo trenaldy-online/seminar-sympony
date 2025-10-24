@@ -6,12 +6,14 @@ use App\Models\Participant;
 use App\Models\Event;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log; // <-- TAMBAHKAN INI
 
 class ParticipantController extends Controller
 {
     // 1. Tampilkan halaman daftar event / formulir pendaftaran
     public function create(Request $request)
     {
+        // ... (kode create() tetap sama) ...
         // Ambil semua Event yang statusnya aktif
         $activeEvents = Event::where('is_active', true)->get();
 
@@ -40,50 +42,49 @@ class ParticipantController extends Controller
     {
         // Validasi event_id
         $request->validate([
-            'event_id' => 'required|exists:events,id', // Event harus ada di tabel events
+            'event_id' => 'required|exists:events,id',
             'name' => 'required|string|max:255',
-            // BARU: Tambahkan validasi unique email per event
             'email' => 'required|email|unique:participants,email,NULL,id,event_id,' . $request->event_id,
             'phone' => 'nullable|string|max:20',
         ]);
 
         // Buat token unik
         do {
-            $token = Str::random(10); // Contoh: 10 karakter acak
+            $token = Str::random(10);
         } while (Participant::where('qr_code_token', $token)->exists());
 
         // Simpan data peserta ke database
-        $participant = Participant::create([
-            'event_id' => $request->event_id,
-            'name' => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'qr_code_token' => $token, // Simpan token
-        ]);
+        try {
+            $participant = Participant::create([
+                'event_id' => $request->event_id,
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'qr_code_token' => $token,
+            ]);
 
-        // Redirect ke halaman tiket dengan token
-        return redirect()->route('participant.ticket', ['token' => $token]);
+            // Redirect ke halaman tiket dengan token
+            return redirect()->route('participant.ticket', ['token' => $token]);
+        } catch (\Exception $e) {
+            // LOG ERROR jika terjadi masalah (terutama MassAssignmentException)
+            Log::error('Kesalahan Mass Assignment atau Database saat pendaftaran:', [
+                'error' => $e->getMessage(),
+                'input' => $request->all(),
+            ]);
+
+            // Beri feedback ke user
+            return back()->withInput()->with('error', 'Pendaftaran gagal. Ada masalah internal.');
+        }
     }
 
     // 3. Tampilkan halaman tiket dengan QR Code (Akses: /seminar/ticket/{token})
     public function showTicket($token)
     {
         $participant = Participant::where('qr_code_token', $token)
-                                ->with('event')
-                                ->firstOrFail();
+                                 ->with('event')
+                                 ->firstOrFail();
 
-        // Data yang di-encode ke QR Code adalah URL check-in panitia (POST action)
-        // Panitia akan menscan ini, dan scanner akan mengirim token sebagai POST request
-
-        // WARNING: Rute ini menunjuk ke POST route, pastikan scanner QR Anda mengirim POST request,
-        // atau kita akan menggunakan GET route untuk kemudahan testing.
-
-        // Untuk kemudahan testing awal (menggunakan token saja):
         $qrDataUrl = $token;
-
-        // Jika Anda ingin meng-encode URL lengkap check-in (seperti yang kita butuhkan nanti di checkin controller):
-        // $qrDataUrl = route('checkin.process', ['qr_token' => $token]);
-        // NOTE: Karena ini POST route, kita akan menggunakan token saja dulu.
 
         return view('participants.ticket', compact('participant', 'qrDataUrl'));
     }

@@ -15,10 +15,11 @@ class Participant extends Model
      * @var array<int, string>
      */
     protected $fillable = [
+        'event_id', // <--- PERBAIKAN PENTING: Tambahkan kolom ini
         'name',
         'email',
         'phone',
-        'qr_code_token', // Penting: Ini harus diizinkan untuk diisi
+        'qr_code_token',
         'is_checked_in',
     ];
 
@@ -31,6 +32,9 @@ class Participant extends Model
         'is_checked_in' => 'boolean', // Pastikan ini dicast sebagai boolean
     ];
 
+    /**
+     * Relasi: Satu Participant dimiliki oleh satu Event.
+     */
     public function event()
     {
         return $this->belongsTo(Event::class);
