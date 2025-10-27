@@ -42,8 +42,7 @@ Route::middleware('auth')->group(function () {
     // --- BARU: ROUTE MANAJEMEN EVENT OLEH ADMIN ---
     // Menggunakan resource untuk generate semua rute CRUD: index, create, store, show, edit, update, destroy
     Route::resource('dashboard/events', EventController::class)
-        ->names('admin.events')
-        ->except(['show']); // Tidak perlu rute 'show' terpisah, kita hanya perlu 'edit'
+        ->names('admin.events');
 });
 
 require __DIR__.'/auth.php';

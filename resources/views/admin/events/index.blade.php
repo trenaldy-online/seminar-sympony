@@ -34,8 +34,11 @@
                         <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                             @forelse ($events as $event)
                                 <tr>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
-                                        {{ $event->name }}
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        {{-- Tautan ke halaman detail event --}}
+                                        <a href="{{ route('admin.events.show', $event) }}" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-600 font-semibold">
+                                            {{ $event->name }}
+                                        </a>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                         {{ \Carbon\Carbon::parse($event->date)->format('d M Y') }}

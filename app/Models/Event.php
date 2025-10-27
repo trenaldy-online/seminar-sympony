@@ -12,7 +12,7 @@ class Event extends Model
     /**
      * The attributes that are mass assignable.
      */
-    protected $fillable = ['name', 'slug', 'description', 'date', 'is_active', 'banner_image'];
+    protected $fillable = ['name', 'slug', 'description', 'date', 'is_active', 'banner_image', 'custom_fields_config'];
 
     /**
      * Relasi One-to-Many: Satu Event memiliki banyak Participant
@@ -21,4 +21,10 @@ class Event extends Model
     {
         return $this->hasMany(Participant::class);
     }
+
+    protected $casts = [
+        'is_active' => 'boolean',
+        'custom_fields_config' => 'array', // <--- TAMBAH INI
+    ];
+
 }

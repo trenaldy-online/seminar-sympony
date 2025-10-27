@@ -41,8 +41,12 @@ class EventController extends Controller
             'name' => 'required|string|max:255',
             'date' => 'required|date',
             'description' => 'nullable|string',
-            // Tambahkan 'banner_image' jika Anda mengimplementasikannya
             'banner_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+
+            // Validasi Custom Fields (Wajib)
+            'custom_fields' => 'nullable|array',
+            'custom_fields.*.name' => 'required|string|max:100|distinct', // Nama field harus unik
+            'custom_fields.*.type' => 'required|in:text,number,email',     // Tipe field harus valid
         ]);
 
         // 2. Logika Upload Gambar Banner (jika ada)
@@ -50,6 +54,21 @@ class EventController extends Controller
         if ($request->hasFile('banner_image')) {
             $filePath = $request->file('banner_image')->store('banners', 'public');
             $bannerPath = 'storage/' . $filePath;
+        }
+
+        // 4. Siapkan data Custom Fields untuk disimpan sebagai JSON
+        $customFieldsConfig = [];
+        if ($request->has('custom_fields')) {
+            // Kita hanya mengambil 'name' dan 'type' untuk array final JSON
+            $customFieldsConfig = collect($request->input('custom_fields'))->map(function($field) {
+                // Kita juga membuat 'key' yang bersih untuk nama kolom/input form nanti
+                $key = Str::slug($field['name'], '_');
+                return [
+                    'key' => $key,
+                    'name' => $field['name'],
+                    'type' => $field['type']
+                ];
+            })->unique('key')->values()->toArray(); // Pastikan key unik dan reset index
         }
 
         // 3. Buat slug dari nama event (bersihkan string untuk URL)
@@ -62,11 +81,39 @@ class EventController extends Controller
             'date' => $request->date,
             'description' => $request->description,
             'banner_image' => $bannerPath,
+            'custom_fields_config' => $customFieldsConfig,
             'is_active' => $request->has('is_active'),
         ]);
 
         // 5. Redirect kembali ke halaman daftar Event dengan pesan sukses
         return redirect()->route('admin.events.index')->with('success', 'Event baru berhasil ditambahkan!');
+    }
+
+    /**
+     * Tampilkan Event spesifik beserta daftar Peserta.
+     */
+    public function show(Event $event)
+    {
+        // Memuat Event dan Peserta yang diurutkan berdasarkan status check-in (yang belum check-in di atas)
+        $event->load([
+            'participants' => function ($query) {
+                // Urutkan berdasarkan status check-in (false/0 dulu, lalu true/1)
+                $query->orderBy('is_checked_in', 'asc')
+                      ->orderBy('name', 'asc'); // Urutan kedua berdasarkan nama
+            }
+        ]);
+
+        // Hitung statistik
+        $totalParticipants = $event->participants->count();
+        $checkedInCount = $event->participants->where('is_checked_in', true)->count();
+        $notCheckedInCount = $totalParticipants - $checkedInCount;
+
+        return view('admin.events.show', compact(
+            'event',
+            'totalParticipants',
+            'checkedInCount',
+            'notCheckedInCount'
+        ));
     }
 
     // --- BARU: METHOD EDIT (Menampilkan form edit) ---

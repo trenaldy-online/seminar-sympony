@@ -47,7 +47,7 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('participant.store') }}">
+<form method="POST" action="{{ route('participant.store') }}">
             @csrf
 
             {{-- Hidden field untuk event_id yang dipilih --}}
@@ -63,12 +63,32 @@
                 <input type="email" id="email" name="email" value="{{ old('email') }}" required class="input-style">
             </div>
 
-            <div style="margin-bottom: 25px;">
+            <div style="margin-bottom: 15px;">
                 <label for="phone" class="label-style">Nomor HP (Opsional):</label>
                 <input type="text" id="phone" name="phone" value="{{ old('phone') }}" class="input-style">
             </div>
 
-            <button type="submit" class="button-style">
+            @if (!empty($selectedEvent->custom_fields_config))
+                <h4 style="margin-top: 25px; margin-bottom: 15px; font-weight: bold; color: #333;">Informasi Tambahan</h4>
+
+                @foreach ($selectedEvent->custom_fields_config as $field)
+                    <div style="margin-bottom: 15px;">
+                        <label for="{{ $field['key'] }}" class="label-style">{{ $field['name'] }}:</label>
+                        {{-- Menggunakan tipe input yang dikonfigurasi (text, number, email) --}}
+                        <input type="{{ $field['type'] }}"
+                               id="{{ $field['key'] }}"
+                               name="custom_fields[{{ $field['key'] }}]"
+                               value="{{ old('custom_fields.' . $field['key']) }}"
+                               {{-- Asumsi semua custom field wajib diisi --}}
+                               required
+                               class="input-style">
+                    </div>
+                    @error('custom_fields.' . $field['key'])
+                        <p style="color: red; font-size: 12px; margin-top: -10px;">{{ $message }}</p>
+                    @enderror
+                @endforeach
+            @endif
+            <button type="submit" style="margin-top: 25px;" class="button-style">
                 Daftar Sekarang
             </button>
         </form>
