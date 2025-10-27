@@ -21,7 +21,8 @@ class Participant extends Model
         'phone',
         'qr_code_token',
         'is_checked_in',
-        'custom_fields_data'
+        'custom_fields_data',
+        'nik',
     ];
 
     /**

@@ -38,6 +38,14 @@
                             <p class="text-3xl font-bold text-red-600 dark:text-red-400">{{ $notCheckedInCount }}</p>
                         </div>
                     </div>
+                    {{-- Tombol Download Excel --}}
+                    <div class="mb-8 flex justify-end">
+                        <a href="{{ route('admin.events.export', $event) }}"
+                        class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            Download Data Peserta (XLSX)
+                        </a>
+                    </div>
 
                     <h4 class="text-xl font-semibold mt-10 mb-4 border-b pb-2">Daftar Peserta (Total: {{ $totalParticipants }})</h4>
 

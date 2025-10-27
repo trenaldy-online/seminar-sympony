@@ -21,6 +21,12 @@ Route::post('/', [ParticipantController::class, 'store'])->name('participant.sto
 // 3. Tampilkan Halaman Tiket/QR Code
 Route::get('/seminar/ticket/{token}', [ParticipantController::class, 'showTicket'])->name('participant.ticket');
 
+// 4. Tampilkan Formulir Pencarian Tiket
+Route::get('/ticket/retrieve', [ParticipantController::class, 'showRetrieveForm'])->name('participant.ticket.retrieve.form');
+
+// 5. Proses Pencarian Tiket
+Route::post('/ticket/retrieve', [ParticipantController::class, 'processTicketRetrieval'])->name('participant.ticket.retrieve.process');
+
 // Route Dashboard (Membutuhkan Login)
 Route::get('/dashboard', function () {
     return view('dashboard');
@@ -43,6 +49,10 @@ Route::middleware('auth')->group(function () {
     // Menggunakan resource untuk generate semua rute CRUD: index, create, store, show, edit, update, destroy
     Route::resource('dashboard/events', EventController::class)
         ->names('admin.events');
+
+    // Rute Tambahan untuk Export Excel
+    Route::get('dashboard/events/{event}/export', [EventController::class, 'exportParticipants'])
+         ->name('admin.events.export');
 });
 
 require __DIR__.'/auth.php';

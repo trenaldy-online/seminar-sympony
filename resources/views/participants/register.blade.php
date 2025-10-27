@@ -112,15 +112,21 @@
 
 	{{-- HEADER --}}
 	<div class="page-header">
-		<a href="{{ url('/') }}" class="header-logo">{{ config('app.name', 'Seminar App') }}</a>
-		<div class="header-nav">
-			@auth
-				<a href="{{ url('/dashboard') }}" class="btn-login">Dashboard</a>
-			@else
-				<a href="{{ route('login') }}" class="btn-login">Login</a>
-			@endauth
-		</div>
-	</div>
+        <a href="{{ url('/') }}" class="header-logo">{{ config('app.name', 'Seminar App') }}</a>
+        <div class="header-nav">
+            {{-- TAMBAHKAN LINK INI --}}
+            <a href="{{ route('participant.ticket.retrieve.form') }}" class="btn-daftar" style="border: 1px solid #007bff;">
+                Cari Tiket
+            </a>
+
+            @auth
+                <a href="{{ url('/dashboard') }}" class="btn-login">Dashboard</a>
+            @else
+                <a href="{{ route('login') }}" class="btn-login">Login</a>
+                {{-- <a href="{{ route('register') }}" class="btn-daftar">Register</a> --}}
+            @endauth
+        </div>
+    </div>
 
 	<div class="main-container">
 		@if ($activeEvents->isEmpty())
