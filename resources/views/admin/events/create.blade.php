@@ -39,6 +39,47 @@
                         <x-text-input id="date" name="date" type="date" :value="old('date')" required />
                     </div>
 
+                    <div class="mb-6">
+                        <label for="max_capacity" class="block font-medium text-sm text-gray-700 dark:text-gray-300">Kuota Maksimal Peserta (Kosongkan jika tidak terbatas)</label>
+                        <x-text-input id="max_capacity" name="max_capacity" type="number" :value="old('max_capacity')" placeholder="Contoh: 100" min="1" />
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Hanya angka (bilangan bulat positif).</p>
+                    </div>
+
+                    <h4 class="text-xl font-semibold mb-4 border-b pb-2 mt-8">Konfigurasi Pembayaran</h4>
+
+                    <div class="mb-4">
+                        <input type="checkbox" id="is_paid" name="is_paid" value="1" {{ old('is_paid') ? 'checked' : '' }}
+                            class="rounded dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-indigo-600 shadow-sm focus:ring-indigo-500">
+                        <label for="is_paid" class="ml-2 font-medium text-sm text-gray-700 dark:text-gray-300">Event Membutuhkan Pembayaran (Berbayar)</label>
+                    </div>
+
+                    <div id="payment-details-container" style="display: {{ old('is_paid') ? 'block' : 'none' }};" class="ml-6 p-4 border border-gray-300 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-700">
+                        <div class="mb-4">
+                            <label for="price" class="block font-medium text-sm text-gray-700 dark:text-gray-300">Harga Tiket (Rp)</label>
+                            {{-- Menggunakan input biasa karena ini bukan x-component --}}
+                            <input type="number" id="price" name="price" value="{{ old('price') }}" min="1000" step="1000"
+                                class="mt-1 block w-full rounded-md shadow-sm border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 text-sm">
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="bank_name" class="block font-medium text-sm text-gray-700 dark:text-gray-300">Nama Bank Tujuan</label>
+                            <input type="text" id="bank_name" name="bank_name" value="{{ old('bank_name') }}"
+                                class="mt-1 block w-full rounded-md shadow-sm border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 text-sm">
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="account_number" class="block font-medium text-sm text-gray-700 dark:text-gray-300">Nomor Rekening Tujuan</label>
+                            <input type="text" id="account_number" name="account_number" value="{{ old('account_number') }}"
+                                class="mt-1 block w-full rounded-md shadow-sm border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 text-sm">
+                        </div>
+
+                        <div>
+                            <label for="account_holder" class="block font-medium text-sm text-gray-700 dark:text-gray-300">Nama Pemilik Rekening</label>
+                            <input type="text" id="account_holder" name="account_holder" value="{{ old('account_holder') }}"
+                                class="mt-1 block w-full rounded-md shadow-sm border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 text-sm">
+                        </div>
+                    </div>
+
                     <div class="mb-4">
                         <label for="description" class="block font-medium text-sm text-gray-700 dark:text-gray-300">Deskripsi Event (Opsional)</label>
                         <textarea id="description" name="description" rows="3"
@@ -161,6 +202,19 @@
             if (oldFields && oldFields.length > 0) {
                 oldFields.forEach(field => addField(field.name, field.type));
             }
+        }
+            // <<< KODE JAVASCRIPT BARU: LOGIKA PEMBAYARAN >>>
+        const isPaidCheckbox = document.getElementById('is_paid');
+        const paymentContainer = document.getElementById('payment-details-container');
+
+        if (isPaidCheckbox && paymentContainer) {
+            isPaidCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    paymentContainer.style.display = 'block';
+                } else {
+                    paymentContainer.style.display = 'none';
+                }
+            });
         }
     });
     </script>

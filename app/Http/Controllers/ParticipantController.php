@@ -29,11 +29,29 @@ class ParticipantController extends Controller
                 return redirect()->route('participant.create')->with('error', 'Event tidak ditemukan atau pendaftaran sudah ditutup.');
             }
 
+            // HITUNG JUMLAH PESERTA
+            $registeredCount = $selectedEvent->participants()->count();
+
+            // Cek jika kuota tidak null (berarti ada batasan) dan sudah penuh
+            if ($selectedEvent->max_capacity !== null && $registeredCount >= $selectedEvent->max_capacity) {
+                return redirect()->route('participant.create')
+                                 ->with('error', 'Mohon maaf, kuota untuk Event "' . $selectedEvent->name . '" sudah penuh.');
+            }
+
             // MODE 2: Tampilkan Formulir Registrasi
-            return view('participants.register_form', compact('selectedEvent'));
+            // PASTIKAN registeredCount DIKIRIMKAN KE VIEW DI BARIS INI
+            return view('participants.register_form', compact('selectedEvent', 'registeredCount')); // <<< PERBAIKAN PENTING DI SINI
         }
 
-        // MODE 1: Tampilkan Banner/Slider Event (sesuai permintaan terakhir)
+        // MODE 1: Tampilkan Banner/Slider Event
+        // Muat data kuota ke collection untuk ditampilkan di slider
+        $activeEvents = $activeEvents->map(function ($event) {
+            $registeredCount = $event->participants()->count();
+            $event->registeredCount = $registeredCount;
+            $event->isFull = $event->max_capacity !== null && $registeredCount >= $event->max_capacity;
+            return $event;
+        });
+
         return view('participants.register', compact('activeEvents'));
     }
 
@@ -54,6 +72,12 @@ class ParticipantController extends Controller
             // Ambil Event untuk mendapatkan konfigurasi custom field
             $event = Event::findOrFail($request->event_id);
             $customFieldsData = [];
+
+            $registeredCount = $event->participants()->count();
+            if ($event->max_capacity !== null && $registeredCount >= $event->max_capacity) {
+                return redirect()->route('participant.create', ['event_id' => $event->id])
+                                 ->with('error', 'Pendaftaran gagal. Kuota Event sudah penuh.');
+            }
 
         // 2. Validasi Dinamis (Custom Fields)
         if ($event->custom_fields_config && $request->has('custom_fields')) {
@@ -94,6 +118,37 @@ class ParticipantController extends Controller
         // Selain itu, jika NIK ada, kita ekstrak dan simpan sebagai kolom statis juga
         $nikData = $request->input('custom_fields.nik', null);
 
+        // 3. Tentukan Status Pembayaran dan Kode Unik
+        $isPaidEvent = $event->is_paid;
+        $participantIsPaid = !$isPaidEvent; // Jika Gratis, langsung TRUE (Lunas). Jika Berbayar, FALSE.
+        $uniqueCode = null;
+
+        if ($isPaidEvent) {
+            // Jika berbayar, hitung kode unik (001 - 999)
+            // Ambil kode unik tertinggi saat ini untuk event ini
+            $lastParticipant = Participant::where('event_id', $event->id)
+                                          ->orderByDesc('id')
+                                          ->first();
+
+            // Kode unik akan menjadi (ID Peserta saat ini + 1) MODULO 1000.
+            // Untuk lebih aman, kita ambil angka acak dari 1 sampai 999 yang belum digunakan.
+            $existingCodes = Participant::where('event_id', $event->id)
+                                        ->whereNotNull('unique_code')
+                                        ->pluck('unique_code')
+                                        ->toArray();
+
+            $availableCodes = array_diff(range(1, 999), $existingCodes);
+
+            if (!empty($availableCodes)) {
+                $uniqueCode = array_rand(array_flip($availableCodes));
+            } else {
+                // Jika semua kode 1-999 sudah habis, ulangi dari 1 (risiko kecil sekali)
+                $uniqueCode = 1;
+            }
+
+        }
+        // Jika event gratis, unique_code tetap null dan is_paid tetap true.
+
         // 3. Buat token unik
         do {
             $token = Str::random(10);
@@ -108,8 +163,18 @@ class ParticipantController extends Controller
                 'phone' => $request->phone,
                 'nik' => $nikData,
                 'qr_code_token' => $token,
-                'custom_fields_data' => $customFieldsData, // SIMPAN DATA CUSTOM FIELDS
+                'custom_fields_data' => $customFieldsData,
+                'is_paid' => $participantIsPaid, // <<< BARU
+                'unique_code' => $uniqueCode,     // <<< BARU
             ]);
+
+            if ($participantIsPaid) {
+                // Event Gratis: Langsung ke Tiket
+                return redirect()->route('participant.ticket', ['token' => $token]);
+            } else {
+                // Event Berbayar: Arahkan ke Halaman Pembayaran
+                return redirect()->route('participant.payment.pending', ['token' => $token]);
+            }
 
             return redirect()->route('participant.ticket', ['token' => $token]);
         } catch (\Exception $e) {
@@ -119,6 +184,21 @@ class ParticipantController extends Controller
             ]);
             return back()->withInput()->with('error', 'Pendaftaran gagal. Ada masalah internal.');
         }
+    }
+
+    // --- BARU: METHOD UNTUK HALAMAN MENUNGGU PEMBAYARAN ---
+    public function showPaymentPending($token)
+    {
+        $participant = Participant::where('qr_code_token', $token)
+                                 ->with('event')
+                                 ->firstOrFail();
+
+        // Jika event ternyata gratis, atau sudah lunas, langsung arahkan ke tiket
+        if (!$participant->event->is_paid || $participant->is_paid) {
+            return redirect()->route('participant.ticket', ['token' => $token]);
+        }
+
+        return view('participants.payment_pending', compact('participant'));
     }
 
     // 3. Tampilkan halaman tiket dengan QR Code (Akses: /seminar/ticket/{token})

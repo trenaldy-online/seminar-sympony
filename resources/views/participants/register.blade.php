@@ -159,6 +159,7 @@
 				<p style="font-size: 0.9em; font-weight: 500; color: #888;" id="event-date"></p>
 				<h2 id="event-title">Memuat Event...</h2>
 				<p id="event-description" class="preserve-breaks">Deskripsi acara akan ditampilkan di sini.</p>
+                <p id="event-capacity" style="margin-bottom: 25px; font-weight: bold; font-size: 1em; display: none;"></p>
 
 				<a href="#" class="register-button-slide" id="register-button-slide">
 					DAFTAR SEKARANG
@@ -173,7 +174,7 @@
 		@endif {{-- Ini adalah @endif yang menutup blok @if ($activeEvents->isEmpty()) @else --}}
 	</div>
 
-	{{-- Script Slider --}}
+{{-- Script Slider --}}
 	@if ($activeEvents->count() > 0)
 	<script>
 		document.addEventListener('DOMContentLoaded', function () {
@@ -187,12 +188,27 @@
 			@php
 				$eventsForJs = $activeEvents->map(function ($event) {
 					$dateString = \Carbon\Carbon::parse($event->date)->isoFormat('dddd, D MMMM Y');
+
+					// Menambahkan data kuota untuk JS
+					$capacityInfo = null;
+					if ($event->max_capacity !== null) {
+						$remaining = $event->max_capacity - $event->registeredCount;
+						$capacityInfo = [
+							'max' => $event->max_capacity,
+							'registered' => $event->registeredCount,
+							'remaining' => $remaining,
+							'isFull' => $event->isFull,
+						];
+					}
+
 					return [
 						'id' => $event->id,
 						'name' => $event->name,
 						'description' => $event->description ?? 'Klik tombol di bawah untuk informasi dan pendaftaran.',
 						'date' => $dateString,
 						'url' => route('participant.create', ['event_id' => $event->id]),
+						'capacity' => $capacityInfo, // <<< DATA KUOTA
+						'isFull' => $event->isFull, // <<< STATUS PENUH
 					];
 				})->values()->toArray();
 			@endphp
@@ -202,6 +218,7 @@
 			const dateElement = document.getElementById('event-date');
 			const descElement = document.getElementById('event-description');
 			const buttonElement = document.getElementById('register-button-slide');
+            const capacityDisplayElement = document.getElementById('event-capacity'); // Elemen Kuota
 
 			function updateContent(index) {
 				const data = eventData[index];
@@ -209,6 +226,23 @@
 				dateElement.textContent = data.date;
 				descElement.textContent = data.description;
 				buttonElement.href = data.url;
+
+                // === LOGIKA TAMPILAN KUOTA ===
+                if (data.capacity) {
+                    capacityDisplayElement.style.display = 'block';
+                    if (data.isFull) {
+                        capacityDisplayElement.innerHTML = '<span style="color: red;">KUOTA PENUH</span>';
+                        buttonElement.style.display = 'none'; // Sembunyikan tombol daftar
+                    } else {
+                        let color = data.capacity.remaining <= 10 ? 'red' : 'green'; // Beri warna jika slot menipis
+                        capacityDisplayElement.innerHTML = 'Slot Tersisa: <span style="color: ' + color + ';">' + data.capacity.remaining + '</span> dari ' + data.capacity.max;
+                        buttonElement.style.display = 'inline-block'; // Tampilkan tombol daftar
+                    }
+                } else {
+                    capacityDisplayElement.style.display = 'none'; // Sembunyikan jika kuota tidak terbatas
+                    buttonElement.style.display = 'inline-block'; // Pastikan tombol ditampilkan
+                }
+                // ==============================
 			}
 
 			updateContent(currentIndex);

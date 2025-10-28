@@ -45,6 +45,10 @@ Route::middleware('auth')->group(function () {
     // Proses check-in berdasarkan token QR (POST)
     Route::post('/dashboard/checkin', [CheckinController::class, 'processCheckin'])->name('checkin.process');
 
+    // Rute untuk Validasi Pembayaran Admin
+    Route::patch('/participants/{participant}/validate-payment', [EventController::class, 'validatePayment'])
+    ->name('admin.participants.validate_payment');
+
     // --- BARU: ROUTE MANAJEMEN EVENT OLEH ADMIN ---
     // Menggunakan resource untuk generate semua rute CRUD: index, create, store, show, edit, update, destroy
     Route::resource('dashboard/events', EventController::class)

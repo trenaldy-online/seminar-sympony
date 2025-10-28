@@ -57,6 +57,7 @@
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nama Peserta</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Email</th>
                                     <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status Check-in</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status Pembayaran</th>
                                     <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Token QR</th>
                                 </tr>
                             </thead>
@@ -80,6 +81,31 @@
                                             </span>
                                         @endif
                                     </td>
+                                    <td class="border px-4 py-2 text-center">
+                                        @if ($participant->event->is_paid)
+                                            @if ($participant->is_paid)
+                                                <span class="text-sm font-semibold text-green-600">LUNAS</span>
+                                            @else
+                                                <span class="text-sm font-semibold text-red-600">
+                                                    BELUM BAYAR (Kode: {{ $participant->unique_code }})
+                                                </span>
+                                            @endif
+                                        @else
+                                            <span class="text-sm text-gray-500">Gratis (Lunas)</span>
+                                        @endif
+                                    </td>
+                                    {{-- Kolom Aksi --}}
+    <td class="border px-4 py-2 text-center">
+        @if ($participant->event->is_paid && !$participant->is_paid)
+            {{-- Tombol Validasi Pembayaran --}}
+            <form method="POST" action="{{ route('admin.participants.validate_payment', $participant) }}" style="display:inline;" onsubmit="return confirm('Yakin ingin memvalidasi pembayaran {{ $participant->name }}?');">
+                @csrf
+                @method('PATCH')
+                <button type="submit" class="text-xs bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded">
+                    Validasi Bayar
+                </button>
+            </form>
+        @endif
                                     <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-mono text-gray-500 dark:text-gray-400">
                                         {{ $participant->qr_code_token }}
                                     </td>

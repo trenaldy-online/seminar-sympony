@@ -36,6 +36,22 @@
 
         <h1 style="color: #333; text-align: center; margin-bottom: 25px;">Pendaftaran Event: <br><strong style="color: #007bff;">{{ $selectedEvent->name }}</strong></h1>
 
+@if ($selectedEvent->max_capacity !== null)
+            @php
+                // Variabel ini dijamin ada karena sudah dikirim dari ParticipantController::create() yang diperbarui
+                $remainingCapacity = $selectedEvent->max_capacity - $registeredCount;
+                $bgColor = $remainingCapacity <= 10 ? '#fdd' : '#d4edda'; // Merah Muda untuk menipis, Hijau Muda untuk aman
+                $textColor = $remainingCapacity <= 10 ? '#a00' : '#155724'; // Merah Tua / Hijau Tua
+                $message = $remainingCapacity > 0
+                            ? "Slot Tersisa: " . $remainingCapacity . " dari " . $selectedEvent->max_capacity
+                            : "Maaf, Kuota Event Sudah Penuh!";
+            @endphp
+
+            <div style="margin-bottom: 20px; padding: 10px; text-align: center; border-radius: 6px; border: 1px solid {{ $textColor }}; background-color: {{ $bgColor }}; color: {{ $textColor }}; font-weight: bold;">
+                {{ $message }}
+            </div>
+        @endif
+
         @if ($errors->any())
             <div class="error-style">
                 <p>Terjadi kesalahan:</p>

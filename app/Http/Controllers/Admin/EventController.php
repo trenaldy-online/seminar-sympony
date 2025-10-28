@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Event;
+use App\Models\Participant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
@@ -44,12 +45,30 @@ class EventController extends Controller
             'date' => 'required|date',
             'description' => 'nullable|string',
             'banner_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'max_capacity' => 'nullable|integer|min:1',
+
+            // Validasi Field Pembayaran
+            'is_paid' => 'nullable|boolean', // Diperlukan untuk memastikan is_paid bisa null/0
+            'price' => 'nullable|numeric|min:0', // Harga wajib jika is_paid, tapi validasi di bawah
+            'bank_name' => 'nullable|string|max:255',
+            'account_number' => 'nullable|string|max:255',
+            'account_holder' => 'nullable|string|max:255',
 
             // Validasi Custom Fields (Wajib)
             'custom_fields' => 'nullable|array',
-            'custom_fields.*.name' => 'required|string|max:100|distinct', // Nama field harus unik
-            'custom_fields.*.type' => 'required|in:text,number,email',     // Tipe field harus valid
+            'custom_fields.*.name' => 'required|string|max:100|distinct',
+            'custom_fields.*.type' => 'required|in:text,number,email',
         ]);
+
+        // LOGIKA: Jika event berbayar, detail pembayaran wajib diisi
+        if ($request->has('is_paid')) {
+            $rules['price'] = 'required|numeric|min:1000';
+            $rules['bank_name'] = 'required|string|max:255';
+            $rules['account_number'] = 'required|string|max:255';
+            $rules['account_holder'] = 'required|string|max:255';
+        }
+
+        $request->validate($rules);
 
         // 2. Logika Upload Gambar Banner (jika ada)
         $bannerPath = null;
@@ -58,33 +77,48 @@ class EventController extends Controller
             $bannerPath = 'storage/' . $filePath;
         }
 
+        // >>> START: LOGIKA GENERASI SLUG UNIK
+        $slug = Str::slug($request->name);
+        $originalSlug = $slug;
+        $count = 1;
+
+        // Cek dan pastikan slug unik. Jika ada, tambahkan suffix angka.
+        while (Event::where('slug', $slug)->exists()) {
+            $count++;
+            $slug = $originalSlug . '-' . $count;
+        }
+        // <<< END: LOGIKA GENERASI SLUG UNIK
+
         // 4. Siapkan data Custom Fields untuk disimpan sebagai JSON
         $customFieldsConfig = [];
         if ($request->has('custom_fields')) {
-            // Kita hanya mengambil 'name' dan 'type' untuk array final JSON
             $customFieldsConfig = collect($request->input('custom_fields'))->map(function($field) {
-                // Kita juga membuat 'key' yang bersih untuk nama kolom/input form nanti
                 $key = Str::slug($field['name'], '_');
                 return [
                     'key' => $key,
                     'name' => $field['name'],
                     'type' => $field['type']
                 ];
-            })->unique('key')->values()->toArray(); // Pastikan key unik dan reset index
+            })->unique('key')->values()->toArray();
         }
-
-        // 3. Buat slug dari nama event (bersihkan string untuk URL)
-        $slug = Str::slug($request->name);
 
         // 4. Simpan Event ke database
         Event::create([
             'name' => $request->name,
-            'slug' => $slug,
+            'slug' => $slug, // Menggunakan slug yang sudah terjamin unik
             'date' => $request->date,
             'description' => $request->description,
             'banner_image' => $bannerPath,
             'custom_fields_config' => $customFieldsConfig,
             'is_active' => $request->has('is_active'),
+            'max_capacity' => $request->max_capacity,
+
+            // <<< PENYIMPANAN FIELD BARU >>>
+            'is_paid' => $request->has('is_paid'),
+            'price' => $request->has('is_paid') ? $request->price : null,
+            'bank_name' => $request->has('is_paid') ? $request->bank_name : null,
+            'account_number' => $request->has('is_paid') ? $request->account_number : null,
+            'account_holder' => $request->has('is_paid') ? $request->account_holder : null,
         ]);
 
         // 5. Redirect kembali ke halaman daftar Event dengan pesan sukses
@@ -138,20 +172,35 @@ class EventController extends Controller
             'name' => 'required|string|max:255',
             'date' => 'required|date',
             'description' => 'nullable|string',
-            // Tambahkan validasi gambar jika Anda mengimplementasikannya
-            // 'banner_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'max_capacity' => 'nullable|integer|min:1',
+
+            // Validasi Field Pembayaran
+            'is_paid' => 'nullable|boolean',
+            'price' => 'nullable|numeric|min:0',
+            'bank_name' => 'nullable|string|max:255',
+            'account_number' => 'nullable|string|max:255',
+            'account_holder' => 'nullable|string|max:255',
         ]);
 
+            // LOGIKA: Jika event berbayar, detail pembayaran wajib diisi
+        if ($request->has('is_paid')) {
+            $rules['price'] = 'required|numeric|min:1000';
+            $rules['bank_name'] = 'required|string|max:255';
+            $rules['account_number'] = 'required|string|max:255';
+            $rules['account_holder'] = 'required|string|max:255';
+        }
+
+        $request->validate($rules);
+
         // 2. Logika Update Gambar Banner (jika ada)
-        $bannerPath = $event->banner_image; // Pertahankan path lama
+        $bannerPath = $event->banner_image;
 
         if ($request->hasFile('banner_image')) {
             // Hapus gambar lama jika ada
             if ($event->banner_image) {
-                // Kita hanya perlu path setelah 'storage/'
-            $oldFilePath = str_replace('storage/', '', $event->banner_image);
-            Storage::disk('public')->delete($oldFilePath); // Hapus dari disk 'public'
-        }
+                $oldFilePath = str_replace('storage/', '', $event->banner_image);
+                Storage::disk('public')->delete($oldFilePath);
+            }
             // Simpan gambar baru ke DISK 'public'
             $filePath = $request->file('banner_image')->store('banners', 'public');
             // Format path untuk database
@@ -165,15 +214,37 @@ class EventController extends Controller
             }
         }
 
+        // >>> START: LOGIKA GENERASI SLUG UNIK SAAT UPDATE
+        $newSlug = Str::slug($request->name);
+        $originalSlug = $newSlug;
+        $count = 1;
+
+        // Cek dan pastikan slug unik, kecuali untuk event yang sedang diupdate ($event->id)
+        while (Event::where('slug', $newSlug)->where('id', '!=', $event->id)->exists()) {
+            $count++;
+            $newSlug = $originalSlug . '-' . $count;
+        }
+        // <<< END: LOGIKA GENERASI SLUG UNIK SAAT UPDATE
+
         // 3. Update data Event
         $event->update([
             'name' => $request->name,
-            'slug' => Str::slug($request->name),
+            'slug' => $newSlug, // Menggunakan slug yang sudah terjamin unik
             'date' => $request->date,
             'description' => $request->description,
-            'banner_image' => $bannerPath, // Update path gambar
+            'banner_image' => $bannerPath,
             'is_active' => $request->has('is_active'),
+            'max_capacity' => $request->max_capacity, // Fitur yang baru ditambahkan
+
+            // <<< PENYIMPANAN FIELD BARU >>>
+            'is_paid' => $request->has('is_paid'),
+            'price' => $request->has('is_paid') ? $request->price : null,
+            'bank_name' => $request->has('is_paid') ? $request->bank_name : null,
+            'account_number' => $request->has('is_paid') ? $request->account_number : null,
+            'account_holder' => $request->has('is_paid') ? $request->account_holder : null,
         ]);
+
+
 
         return redirect()->route('admin.events.index')->with('success', 'Event "' . $event->name . '" berhasil diperbarui!');
     }
@@ -215,4 +286,29 @@ class EventController extends Controller
         // 4. Lakukan ekspor
         return Excel::download(new ParticipantsExport($participants, $customFieldsConfig), $fileName);
     }
-}
+        /**
+         * Mengubah status pembayaran peserta menjadi Lunas.
+         */
+        public function validatePayment(Participant $participant)
+        {
+            // Cek dulu apakah event memang berbayar
+            if (!$participant->event->is_paid) {
+                return back()->with('error', 'Event ini gratis, tidak memerlukan validasi pembayaran.');
+            }
+
+            // Cek jika sudah lunas
+            if ($participant->is_paid) {
+                return back()->with('info', 'Peserta ini sudah lunas.');
+            }
+
+            // Ubah status pembayaran
+            $participant->is_paid = true;
+            $participant->save();
+
+            // TODO: (Opsional) Kirim Email notifikasi tiket ke peserta
+
+                return back()->with('success', 'Pembayaran peserta "' . $participant->name . '" berhasil divalidasi!');
+            }
+    }
+
+

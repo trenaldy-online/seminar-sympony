@@ -23,6 +23,8 @@ class Participant extends Model
         'is_checked_in',
         'custom_fields_data',
         'nik',
+        'is_paid',
+        'unique_code',
     ];
 
     /**
@@ -33,6 +35,7 @@ class Participant extends Model
     protected $casts = [
         'is_checked_in' => 'boolean', // Pastikan ini dicast sebagai boolean
         'custom_fields_data' => 'array',
+        'is_paid' => 'boolean',
     ];
 
     /**
