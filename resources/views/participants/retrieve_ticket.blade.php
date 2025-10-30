@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/logo_sympony_icon.png') }}">
     <title>Cari Tiket Saya</title>
     <style>
         body { font-family: sans-serif; margin: 0; padding: 0; background-color: #f0f4f8; display: flex; justify-content: center; align-items: center; min-height: 100vh; }

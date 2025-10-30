@@ -285,24 +285,24 @@ class EventController extends Controller
         return redirect()->route('admin.events.index')->with('success', 'Event "' . $eventName . '" berhasil dihapus!');
     }
 
-    /**
-     * Mengekspor data peserta event ke format XLSX.
-     */
-    public function exportParticipants(Event $event)
-    {
-        // 1. Muat semua peserta untuk Event ini
-        $participants = $event->participants;
+        /**
+        * Mengekspor data peserta event ke format XLSX.
+        */
+        public function exportParticipants(Event $event)
+        {
+            // 1. Muat semua peserta untuk Event ini, dan EAGER LOAD relasi 'event' untuk mencegah N+1 Query
+            // DENGAN MENGGUNAKAN participantS() BARU BISA DIKASIH WITH
+            $participants = $event->participants()->with('event')->get(); // <--- Pastikan baris ini sudah diubah!
 
-        // 2. Ambil konfigurasi custom field
-        // Ambil konfigurasi dari kolom JSON
-        $customFieldsConfig = $event->custom_fields_config ?? [];
+            // 2. Ambil konfigurasi custom field
+            $customFieldsConfig = $event->custom_fields_config ?? [];
 
-        // 3. Tentukan nama file
-        $fileName = 'Peserta_' . Str::slug($event->name) . '_' . date('Ymd_His') . '.xlsx';
+            // 3. Tentukan nama file
+            $fileName = 'Peserta_' . Str::slug($event->name) . '_' . date('Ymd_His') . '.xlsx';
 
-        // 4. Lakukan ekspor
-        return Excel::download(new ParticipantsExport($participants, $customFieldsConfig), $fileName);
-    }
+            // 4. Lakukan ekspor
+            return Excel::download(new ParticipantsExport($participants, $customFieldsConfig), $fileName);
+        }
         /**
          * Mengubah status pembayaran peserta menjadi Lunas.
          */

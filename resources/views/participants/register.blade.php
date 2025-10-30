@@ -3,20 +3,35 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Daftar Event Seminar | {{ config('app.name', 'Laravel') }}</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/logo_sympony_icon.png') }}">
 
 	@vite(['resources/css/app.css', 'resources/js/app.js'])
 
 	<style>
 		body { font-family: sans-serif; margin: 0; padding: 0; background-color: #f0f4f8; }
 
-		/* HEADER STYLE */
+		/* HEADER STYLE (Disesuaikan agar lebih ringkas di mobile) */
 		.page-header {
 			display: flex;
 			justify-content: space-between;
 			align-items: center;
-			padding: 15px 30px;
+			padding: 10px 30px; /* Mengurangi padding default */
 			background-color: white;
 			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+		}
+        /* Tambahan CSS mobile spesifik untuk header */
+		@media (max-width: 640px) {
+			.page-header {
+				padding: 10px 15px;
+			}
+			.header-logo {
+				font-size: 20px;
+			}
+			.header-nav a {
+				padding: 6px 10px;
+				margin-left: 5px;
+				font-size: 14px;
+			}
 		}
 		.header-logo { font-size: 24px; font-weight: bold; color: #007bff; text-decoration: none; }
 		.header-nav a {
@@ -30,7 +45,7 @@
 		.btn-login { background-color: #007bff; color: white; }
 
 		/* SLIDER/CONTENT STYLE */
-		.main-container { padding: 40px 20px; max-width: 1200px; margin: 0 auto; }
+		.main-container { padding: 20px 15px; max-width: 1200px; margin: 0 auto; }
 		.slider-wrapper {
 			overflow: hidden;
 			border-top-left-radius: 12px;
@@ -44,15 +59,18 @@
 			width: 100%;
 		}
 		.slide {
-			/* Perbaikan Utama: Rasio 16:9 menggunakan padding hack */
+			/* Perbaikan Utama: Memaksa rasio 16:9 dan memastikan gambar TIDAK terpotong */
 			min-width: 100%;
 			width: 100%;
 			height: 0;
-			padding-top: 56.25%; /* 16:9 Rasio */
+			padding-top: 56.25%; /* Rasio 16:9 (9/16 = 0.5625) */
 			position: relative;
 
-			background-size: cover;
+			/* Perubahan Kunci: Menggunakan 'contain' dan latar belakang netral */
+			background-size: contain;
+			background-repeat: no-repeat;
 			background-position: center;
+			background-color: #000000; /* Latar belakang hitam untuk mengisi area kosong */
 
 			display: block;
 		}
@@ -67,7 +85,7 @@
 			border-bottom-left-radius: 12px;
 			border-bottom-right-radius: 12px;
 			box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-			margin-top: -10px;
+			margin-top: 0px; /* Hapus margin negatif, biarkan diatur oleh spacing di atas */
 			text-align: center;
 		}
 		.slide-content-bottom h2 {
@@ -101,10 +119,30 @@
 
 		.no-image { background-color: #1e88e5 !important; }
 
-		@media (max-width: 800px) {
-			.slide { padding-top: 75%; }
-			.slide-content-bottom { padding: 20px; }
-			.slide-content-bottom h2 { font-size: 1.8em; }
+		@media (min-width: 800px) {
+			/* Untuk desktop, gunakan rasio 16:9 */
+			.slide { padding-top: 56.25%; }
+		}
+
+        /* PERBAIKAN MOBILE HEADER KHUSUS: Mengurangi padding di layar sangat kecil */
+		@media (max-width: 640px) {
+			.page-header {
+				padding: 10px 15px; /* Lebih kecil */
+			}
+			.header-logo {
+				font-size: 20px; /* Logo sedikit kecil */
+			}
+			.header-nav a {
+				padding: 6px 12px; /* Tombol lebih kecil */
+				margin-left: 5px;
+				font-size: 14px;
+		}
+
+        /* Sesuaikan ukuran font di mobile */
+		@media (max-width: 640px) {
+			.main-container { padding: 20px 10px; }
+			.slide-content-bottom h2 { font-size: 1.6em; }
+			.slide-content-bottom { padding: 20px 15px; }
 		}
 	</style>
 </head>
@@ -112,19 +150,18 @@
 
 	{{-- HEADER --}}
 	<div class="page-header">
-        <a href="{{ url('/') }}" class="header-logo">{{ config('app.name', 'Seminar App') }}</a>
+        {{-- Pastikan ini menggunakan tag a untuk kembali ke home --}}
+        <a href="{{ url('/') }}" class="header-logo">
+        {{-- Hapus: {{ config('app.name', 'Seminar App') }} --}}
+
+        {{-- Ganti dengan Logo --}}
+        <img src="{{ asset('images/logo_sympony.PNG') }}" alt="Sympony Logo" style="height: 30px; width: auto;">
+
+    </a>
         <div class="header-nav">
-            {{-- TAMBAHKAN LINK INI --}}
             <a href="{{ route('participant.ticket.retrieve.form') }}" class="btn-daftar" style="border: 1px solid #007bff;">
                 Cari Tiket
             </a>
-
-            @auth
-                <a href="{{ url('/dashboard') }}" class="btn-login">Dashboard</a>
-            @else
-                <a href="{{ route('login') }}" class="btn-login">Login</a>
-                {{-- <a href="{{ route('register') }}" class="btn-daftar">Register</a> --}}
-            @endauth
         </div>
     </div>
 
@@ -155,12 +192,12 @@
 			</div>
 
 			{{-- KONTEN DESKRIPSI DAN TOMBOL DI BAWAH GAMBAR --}}
-			<div class="slide-content-bottom" id="slide-content-bottom">
-				<p style="font-size: 0.9em; font-weight: 500; color: #888;" id="event-date"></p>
-				<h2 id="event-title">Memuat Event...</h2>
-				<p id="event-description" class="preserve-breaks">Deskripsi acara akan ditampilkan di sini.</p>
-                <p id="event-capacity" style="margin-bottom: 25px; font-weight: bold; font-size: 1em; display: none;"></p>
-
+			<div class="slide-content-bottom" id="slide-content-bottom" style="text-align: center;">
+                <p id="event-date" style="font-size: 0.9em; font-weight: 500; color: #888; text-align: center;"></p>
+                <h2 id="event-title" style="text-align: center;">Memuat Event...</h2>
+                <p id="event-description" class="preserve-breaks" style="text-align: left;">Deskripsi acara akan ditampilkan di sini.</p>
+            </div>
+            <div class="slide-content-bottom" id="slide-content-bottom">
 				<a href="#" class="register-button-slide" id="register-button-slide">
 					DAFTAR SEKARANG
 				</a>
@@ -224,7 +261,7 @@
 				const data = eventData[index];
 				titleElement.textContent = data.name;
 				dateElement.textContent = data.date;
-				descElement.textContent = data.description;
+				descElement.innerHTML = data.description;
 				buttonElement.href = data.url;
 
                 // === LOGIKA TAMPILAN KUOTA ===

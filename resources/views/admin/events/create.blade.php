@@ -82,8 +82,18 @@
 
                     <div class="mb-4">
                         <label for="description" class="block font-medium text-sm text-gray-700 dark:text-gray-300">Deskripsi Event (Opsional)</label>
-                        <textarea id="description" name="description" rows="3"
-                               class="mt-1 block w-full rounded-md shadow-sm border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:ring-indigo-500">{{ old('description') }}</textarea>
+
+                        {{-- 1. Tambahkan input HIDDEN dengan nama 'description' --}}
+                        <input id="x_description_input" type="hidden" name="description" value="{{ old('description') }}">
+
+                        {{-- 2. Tambahkan Trix Editor. Atribut 'input' menunjuk ke ID input hidden --}}
+                        <trix-editor input="x_description_input" class="trix-content mt-1 block w-full">
+                            {{-- Tampilkan old content di editor jika ada error --}}
+                            {!! old('description') !!}
+                        </trix-editor>
+
+                        {{-- Hapus textarea lama Anda --}}
+                        {{-- <textarea id="description" name="description" rows="3" class="...">{{ old('description') }}</textarea> --}}
                     </div>
 
                     <div class="mb-6">

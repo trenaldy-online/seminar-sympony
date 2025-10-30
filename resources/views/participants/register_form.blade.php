@@ -2,13 +2,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/logo_sympony_icon.png') }}">
     <title>Daftar: {{ $selectedEvent->name }}</title>
     <style>
-        body { font-family: sans-serif; margin: 0; padding: 0; background-color: #eef2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 20px; /* Tambahkan padding di body agar tidak menempel ke tepi layar */
+            background-color: #eef2f5;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Ubah ke flex-start agar konten tidak selalu di tengah secara vertikal */
+            min-height: 100vh;
+            box-sizing: border-box; /* Sangat penting: Pastikan padding tidak menambah lebar */
+        }
         .form-container {
             width: 100%;
             max-width: 500px;
-            padding: 30px;
+            /* Perbaikan Kritis: Sesuaikan padding horizontal untuk mobile */
+            padding: 30px 20px;
             background-color: #fcfcfc;
             border-radius: 12px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
@@ -25,6 +37,21 @@
         }
         .error-style {
             background-color: #fdd; color: #a00; padding: 10px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #f00;
+        }
+
+        /* --- Perbaikan Spesifik Mobile --- */
+        @media (max-width: 600px) {
+            body {
+                padding: 10px; /* Kurangi padding body di layar sangat kecil */
+                align-items: flex-start;
+            }
+            .form-container {
+                padding: 20px 15px; /* Kurangi padding container agar tidak terpotong */
+                margin-top: 0; /* Pastikan tidak ada margin atas yang tidak perlu */
+            }
+            .form-container h1 {
+                font-size: 1.5em; /* Kecilkan judul */
+            }
         }
     </style>
 </head>

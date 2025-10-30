@@ -6,6 +6,7 @@ use App\Models\Participant;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
+use Carbon\Carbon;
 
 class ParticipantsExport implements FromCollection, WithHeadings
 {
@@ -28,6 +29,10 @@ class ParticipantsExport implements FromCollection, WithHeadings
             'EMAIL',
             'NIK',
             'NO. HP',
+            'BIAYA EVENT',
+            'KODE UNIK',
+            'TOTAL PEMBAYARAN',
+            'STATUS PEMBAYARAN',
             'STATUS CHECK-IN',
             'WAKTU DAFTAR',
         ];
@@ -48,6 +53,26 @@ class ParticipantsExport implements FromCollection, WithHeadings
         // Mapping data peserta ke format baris Excel
         return $this->participants->map(function ($participant) {
 
+            // --- Logika Pembayaran Baru ---
+            // Asumsi relasi 'event' sudah di-load (Eager Loaded) pada koleksi $participants
+            $eventPrice = $participant->event->price ?? 0;
+            $uniqueCode = $participant->unique_code ?? 0;
+            $totalPayment = $eventPrice + $uniqueCode;
+
+            // --- LOGIKA PENENTUAN STATUS PEMBAYARAN YANG DIKOREKSI ---
+            $paymentStatusText = 'TIDAK DIKETAHUI';
+
+            if (!$participant->event->is_paid) {
+                // 1. Jika Event GRATIS
+                $paymentStatusText = 'GRATIS';
+            } elseif ($participant->is_paid) {
+                // 2. Jika Event BERBAYAR dan is_paid TRUE (Sudah divalidasi Admin)
+                $paymentStatusText = 'SUDAH DIBAYAR';
+            } else {
+                // 3. Jika Event BERBAYAR dan is_paid FALSE
+                $paymentStatusText = 'MENUNGGU PEMBAYARAN';
+            }
+
             // Konversi status check-in ke teks
             $status = $participant->is_checked_in ? 'SUDAH CHECK-IN' : 'BELUM CHECK-IN';
 
@@ -57,8 +82,14 @@ class ParticipantsExport implements FromCollection, WithHeadings
                 $participant->email,
                 $participant->nik ?? '-',
                 $participant->phone ?? '-',
+
+                // Data Pembayaran
+                number_format($eventPrice, 0, ',', '.'),
+                $uniqueCode,
+                number_format($totalPayment, 0, ',', '.'),
+                $paymentStatusText,
+
                 $status,
-                // Pastikan Carbon ter-import di file ini jika Anda ingin menggunakan format timezone
                 $participant->created_at->setTimezone('Asia/Jakarta')->format('d/m/Y H:i:s'),
             ];
 

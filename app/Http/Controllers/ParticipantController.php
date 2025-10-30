@@ -179,7 +179,8 @@ class ParticipantController extends Controller
                 'input' => $request->all(),
             ]);
             // TAMPILKAN PESAN ERROR DARI EXCEPTION AGAR MUDAH DIDEBUG
-            return back()->withInput()->with('error', 'Pendaftaran gagal. Error: ' . $e->getMessage());
+            // Perbaikan yang Disarankan
+            return back()->withInput()->with('error', 'Pendaftaran gagal. Terjadi kesalahan sistem. Silakan coba lagi atau hubungi administrator.');
         }
     }
 

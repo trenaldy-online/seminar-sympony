@@ -94,8 +94,22 @@
 
                     <div class="mb-4">
                         <label for="description" class="block font-medium text-sm text-gray-700 dark:text-gray-300">Deskripsi (Opsional)</label>
-                        <textarea id="description" name="description" rows="3"
-                               class="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">{{ old('description', $event->description) }}</textarea>
+
+                        @php
+                            // Gunakan old() jika ada error, jika tidak gunakan data dari database
+                            $descriptionContent = old('description', $event->description);
+                        @endphp
+
+                        {{-- 1. Tambahkan input HIDDEN dengan nama 'description' --}}
+                        <input id="x_description_edit" type="hidden" name="description" value="{{ $descriptionContent }}">
+
+                        {{-- 2. Tambahkan Trix Editor --}}
+                        <trix-editor input="x_description_edit" class="trix-content mt-1 block w-full">
+                            {!! $descriptionContent !!}
+                        </trix-editor>
+
+                        {{-- Hapus textarea lama Anda --}}
+                        {{-- <textarea id="description" name="description" rows="3" class="..."></textarea> --}}
                     </div>
 
                     <div class="mb-6">
