@@ -15,12 +15,12 @@ class Participant extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'event_id', // <--- PERBAIKAN PENTING: Tambahkan kolom ini
+        'event_id',
         'name',
         'email',
         'phone',
         'qr_code_token',
-        'is_checked_in',
+        'is_checked_in', // DIPERBAIKI: Harus ada di fillable jika di-set di controller
         'custom_fields_data',
         'nik',
         'is_paid',
@@ -36,6 +36,7 @@ class Participant extends Model
         'is_checked_in' => 'boolean', // Pastikan ini dicast sebagai boolean
         'custom_fields_data' => 'array',
         'is_paid' => 'boolean',
+        'checked_in_at' => 'datetime', // Casting untuk kolom timestamp check-in
     ];
 
     /**

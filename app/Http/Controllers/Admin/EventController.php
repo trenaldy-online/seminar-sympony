@@ -11,6 +11,8 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\ParticipantsExport;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
+
 
 class EventController extends Controller
 {
@@ -40,7 +42,7 @@ class EventController extends Controller
     public function store(Request $request)
     {
         // 1. Validasi data masukan dari formulir
-        $request->validate([
+        $rules = [
             'name' => 'required|string|max:255',
             'date' => 'required|date',
             'description' => 'nullable|string',
@@ -58,7 +60,8 @@ class EventController extends Controller
             'custom_fields' => 'nullable|array',
             'custom_fields.*.name' => 'required|string|max:100|distinct',
             'custom_fields.*.type' => 'required|in:text,number,email',
-        ]);
+
+        ];
 
         // LOGIKA: Jika event berbayar, detail pembayaran wajib diisi
         if ($request->has('is_paid')) {
@@ -128,14 +131,27 @@ class EventController extends Controller
     /**
      * Tampilkan Event spesifik beserta daftar Peserta.
      */
-    public function show(Event $event)
+    public function show(Event $event, Request $request)
     {
+        $searchQuery = $request->query('q');
+
         // Memuat Event dan Peserta yang diurutkan berdasarkan status check-in (yang belum check-in di atas)
         $event->load([
-            'participants' => function ($query) {
+            'participants' => function ($query) use ($searchQuery) {
+
+                // Jika ada query pencarian, tambahkan kondisi pencarian
+                if ($searchQuery) {
+                    $query->where(function ($q) use ($searchQuery) {
+                        $q->where('name', 'like', '%' . $searchQuery . '%')
+                          ->orWhere('email', 'like', '%' . $searchQuery . '%')
+                          ->orWhere('nik', 'like', '%' . $searchQuery . '%')
+                          ->orWhere('unique_code', 'like', '%' . $searchQuery . '%');
+                    });
+                };
+
                 // Urutkan berdasarkan status check-in (false/0 dulu, lalu true/1)
                 $query->orderBy('is_checked_in', 'asc')
-                      ->orderBy('name', 'asc'); // Urutan kedua berdasarkan nama
+                      ->orderBy('created_at', 'desc'); // Urutan kedua berdasarkan creaeted_at
             }
         ]);
 
@@ -148,7 +164,8 @@ class EventController extends Controller
             'event',
             'totalParticipants',
             'checkedInCount',
-            'notCheckedInCount'
+            'notCheckedInCount',
+            'searchQuery'
         ));
     }
 
@@ -168,7 +185,7 @@ class EventController extends Controller
     public function update(Request $request, Event $event)
     {
         // 1. Validasi data
-        $request->validate([
+        $rules = [
             'name' => 'required|string|max:255',
             'date' => 'required|date',
             'description' => 'nullable|string',
@@ -180,7 +197,7 @@ class EventController extends Controller
             'bank_name' => 'nullable|string|max:255',
             'account_number' => 'nullable|string|max:255',
             'account_holder' => 'nullable|string|max:255',
-        ]);
+        ];
 
             // LOGIKA: Jika event berbayar, detail pembayaran wajib diisi
         if ($request->has('is_paid')) {
@@ -308,7 +325,29 @@ class EventController extends Controller
             // TODO: (Opsional) Kirim Email notifikasi tiket ke peserta
 
                 return back()->with('success', 'Pembayaran peserta "' . $participant->name . '" berhasil divalidasi!');
-            }
-    }
+        }
+        /**
+     * Menghasilkan dan mendownload QR Code untuk peserta (menggunakan format SVG).
+     */
+    public function downloadQrCode($token)
+    {
+        // Cari peserta berdasarkan token
+        $participant = Participant::where('qr_code_token', $token)->firstOrFail();
 
+        // Menggunakan ekstensi .svg
+        $fileName = Str::slug($participant->name) . '_' . $token . '_QR.svg';
+
+        // Menggunakan format SVG agar tidak memerlukan ekstensi PHP Imagick/GD
+        $qrCode = QrCode::format('svg')
+                        ->size(300)
+                        ->margin(1)
+                        ->generate($token);
+
+        // Kembalikan response sebagai file yang dapat didownload (Content Type untuk SVG)
+        return response($qrCode, 200, [
+            'Content-Type' => 'image/svg+xml',
+            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+        ]);
+    }
+}
 

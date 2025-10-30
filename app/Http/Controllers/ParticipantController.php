@@ -40,7 +40,7 @@ class ParticipantController extends Controller
 
             // MODE 2: Tampilkan Formulir Registrasi
             // PASTIKAN registeredCount DIKIRIMKAN KE VIEW DI BARIS INI
-            return view('participants.register_form', compact('selectedEvent', 'registeredCount')); // <<< PERBAIKAN PENTING DI SINI
+            return view('participants.register_form', compact('selectedEvent', 'registeredCount'));
         }
 
         // MODE 1: Tampilkan Banner/Slider Event
@@ -62,7 +62,8 @@ class ParticipantController extends Controller
             $staticValidation = [
                 'event_id' => 'required|exists:events,id',
                 'name' => 'required|string|max:255',
-                'email' => 'required|email|unique:participants,email,NULL,id,event_id,' . $request->event_id,
+                // EMAIL HANYA DIVALIDASI FORMAT, TIDAK ADA ATURAN UNIQUE
+                'email' => 'required|email',
                 'phone' => 'nullable|string|max:20',
                 'custom_fields' => 'nullable|array',
             ];
@@ -86,7 +87,7 @@ class ParticipantController extends Controller
             foreach ($event->custom_fields_config as $field) {
                 $key = $field['key']; // Ambil key (misal: 'nik')
                 $validationRule = $field['type'];
-                $rules = ['required']; // Semua custom field wajib
+                $rules = ['required']; // Semua custom field wajib (Aturan default, ubah jika ada yang opsional)
 
                 // --- MAPPING TIPE DATA FORM KE ATURAN VALIDASI LARAVEL ---
                 if ($validationRule === 'number') {
@@ -99,7 +100,8 @@ class ParticipantController extends Controller
 
                 // --- PERBAIKAN: ATURAN KHUSUS UNTUK NIK ---
                 if (str_contains($key, 'nik')) { // Cek jika key mengandung 'nik'
-                    $rules = array_merge($rules, ['digits:16', 'unique:participants,nik']); // Tambahkan validasi 16 digit dan unique
+                    // DIUBAH: Hapus aturan 'unique:participants,nik'
+                    $rules = array_merge($rules, ['digits:16']);
                 } else {
                     $rules[] = 'max:255'; // Aturan max 255 untuk field lain
                 }
@@ -113,25 +115,21 @@ class ParticipantController extends Controller
             if ($customValidator->fails()) {
                 return back()->withErrors($customValidator)->withInput();
             }
+
+            // ISI DATA CUSTOM FIELDS SETELAH VALIDASI BERHASIL
+            $customFieldsData = $request->input('custom_fields');
         }
 
         // Selain itu, jika NIK ada, kita ekstrak dan simpan sebagai kolom statis juga
-        $nikData = $request->input('custom_fields.nik', null);
+        $nikData = $request->input('custom_fields.nik', '');
 
         // 3. Tentukan Status Pembayaran dan Kode Unik
         $isPaidEvent = $event->is_paid;
-        $participantIsPaid = !$isPaidEvent; // Jika Gratis, langsung TRUE (Lunas). Jika Berbayar, FALSE.
+        $participantIsPaid = !$isPaidEvent; // Jika Gratis, TRUE. Jika Berbayar, FALSE.
         $uniqueCode = null;
 
         if ($isPaidEvent) {
-            // Jika berbayar, hitung kode unik (001 - 999)
-            // Ambil kode unik tertinggi saat ini untuk event ini
-            $lastParticipant = Participant::where('event_id', $event->id)
-                                          ->orderByDesc('id')
-                                          ->first();
-
-            // Kode unik akan menjadi (ID Peserta saat ini + 1) MODULO 1000.
-            // Untuk lebih aman, kita ambil angka acak dari 1 sampai 999 yang belum digunakan.
+            // Logika Kode Unik (dihitung jika berbayar)
             $existingCodes = Participant::where('event_id', $event->id)
                                         ->whereNotNull('unique_code')
                                         ->pluck('unique_code')
@@ -142,12 +140,9 @@ class ParticipantController extends Controller
             if (!empty($availableCodes)) {
                 $uniqueCode = array_rand(array_flip($availableCodes));
             } else {
-                // Jika semua kode 1-999 sudah habis, ulangi dari 1 (risiko kecil sekali)
                 $uniqueCode = 1;
             }
-
         }
-        // Jika event gratis, unique_code tetap null dan is_paid tetap true.
 
         // 3. Buat token unik
         do {
@@ -164,29 +159,31 @@ class ParticipantController extends Controller
                 'nik' => $nikData,
                 'qr_code_token' => $token,
                 'custom_fields_data' => $customFieldsData,
-                'is_paid' => $participantIsPaid, // <<< BARU
-                'unique_code' => $uniqueCode,     // <<< BARU
+                'is_paid' => $participantIsPaid,
+                'unique_code' => $uniqueCode,
+                // Pastikan hanya kolom yang ada di migrasi dan fillable di Model yang ada di sini
             ]);
 
-            if ($participantIsPaid) {
-                // Event Gratis: Langsung ke Tiket
-                return redirect()->route('participant.ticket', ['token' => $token]);
-            } else {
+            // PERBAIKAN REDIRECTION
+            if ($event->is_paid) {
                 // Event Berbayar: Arahkan ke Halaman Pembayaran
                 return redirect()->route('participant.payment.pending', ['token' => $token]);
+            } else {
+                // Event Gratis: Langsung ke Tiket
+                return redirect()->route('participant.ticket', ['token' => $token]);
             }
 
-            return redirect()->route('participant.ticket', ['token' => $token]);
         } catch (\Exception $e) {
-            Log::error('Kesalahan Mass Assignment atau Database saat pendaftaran:', [
+            Log::error('Kesalahan Database saat pendaftaran:', [
                 'error' => $e->getMessage(),
                 'input' => $request->all(),
             ]);
-            return back()->withInput()->with('error', 'Pendaftaran gagal. Ada masalah internal.');
+            // TAMPILKAN PESAN ERROR DARI EXCEPTION AGAR MUDAH DIDEBUG
+            return back()->withInput()->with('error', 'Pendaftaran gagal. Error: ' . $e->getMessage());
         }
     }
 
-    // --- BARU: METHOD UNTUK HALAMAN MENUNGGU PEMBAYARAN ---
+    // --- METHOD LAIN TIDAK BERUBAH ---
     public function showPaymentPending($token)
     {
         $participant = Participant::where('qr_code_token', $token)
@@ -201,24 +198,25 @@ class ParticipantController extends Controller
         return view('participants.payment_pending', compact('participant'));
     }
 
-    // 3. Tampilkan halaman tiket dengan QR Code (Akses: /seminar/ticket/{token})
     public function showTicket($token)
     {
         $participant = Participant::where('qr_code_token', $token)
                                  ->with('event')
                                  ->firstOrFail();
 
+        // Cek jika event berbayar dan belum lunas, alihkan ke halaman pending
+        if ($participant->event->is_paid && !$participant->is_paid) {
+             return redirect()->route('participant.payment.pending', ['token' => $token]);
+        }
+
         $qrDataUrl = $token;
 
         return view('participants.ticket', compact('participant', 'qrDataUrl'));
     }
 
-// 4. Tampilkan formulir untuk mencari tiket
     public function showRetrieveForm()
     {
-        // Ambil daftar event aktif untuk dropdown
         $activeEvents = Event::where('is_active', true)->get();
-
         return view('participants.retrieve_ticket', compact('activeEvents'));
     }
 
@@ -226,9 +224,9 @@ class ParticipantController extends Controller
     public function processTicketRetrieval(Request $request)
     {
         $request->validate([
-            'nik' => 'required|string|min:16|max:16', // Validasi format NIK 16 digit
+            'nik' => 'required|string|min:16|max:16',
             'email' => 'required|email',
-            'event_id' => 'required|exists:events,id', // Tetap gunakan Event ID untuk scoping
+            'event_id' => 'required|exists:events,id',
         ]);
 
         // Cari peserta berdasarkan NIK, Email, dan Event ID
@@ -241,8 +239,22 @@ class ParticipantController extends Controller
             return back()->withInput()->with('error', 'Tiket tidak ditemukan. Kombinasi NIK dan Email tidak cocok untuk Event yang dipilih.');
         }
 
-        // Jika ditemukan, redirect ke halaman tiket menggunakan token
+        // <<< PERBAIKAN: Cek Status Pembayaran dan Arahkan ke Halaman yang Tepat >>>
+
+        // Load Event relationship untuk mengecek is_paid event
+        // Kita menggunakan with('event') karena di query awal kita tidak meloadnya.
+        $participant->load('event');
+
+        // Jika event berbayar dan peserta belum lunas (is_paid = false)
+        if ($participant->event->is_paid && !$participant->is_paid) {
+            // Arahkan kembali ke halaman pending payment
+            return redirect()->route('participant.payment.pending', ['token' => $participant->qr_code_token])
+                             ->with('info', 'Tiket Anda ditemukan, namun Anda harus menyelesaikan pembayaran.');
+        }
+
+        // Jika sudah lunas atau event gratis, arahkan ke halaman tiket
         return redirect()->route('participant.ticket', ['token' => $participant->qr_code_token])
                          ->with('success', 'Tiket Anda berhasil ditemukan!');
+        // <<< AKHIR PERBAIKAN >>>
     }
 }

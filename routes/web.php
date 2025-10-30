@@ -18,13 +18,16 @@ Route::get('/', [ParticipantController::class, 'create'])->name('participant.cre
 // 2. Proses dan Simpan Data Pendaftaran Peserta
 Route::post('/', [ParticipantController::class, 'store'])->name('participant.store');
 
-// 3. Tampilkan Halaman Tiket/QR Code
+// 3. Tampilkan Halaman Menunggu Pembayaran
+Route::get('/seminar/payment/{token}', [ParticipantController::class, 'showPaymentPending'])->name('participant.payment.pending');
+
+// 4. Tampilkan Halaman Tiket/QR Code
 Route::get('/seminar/ticket/{token}', [ParticipantController::class, 'showTicket'])->name('participant.ticket');
 
-// 4. Tampilkan Formulir Pencarian Tiket
+// 5. Tampilkan Formulir Pencarian Tiket
 Route::get('/ticket/retrieve', [ParticipantController::class, 'showRetrieveForm'])->name('participant.ticket.retrieve.form');
 
-// 5. Proses Pencarian Tiket
+// 6. Proses Pencarian Tiket
 Route::post('/ticket/retrieve', [ParticipantController::class, 'processTicketRetrieval'])->name('participant.ticket.retrieve.process');
 
 // Route Dashboard (Membutuhkan Login)
@@ -57,6 +60,14 @@ Route::middleware('auth')->group(function () {
     // Rute Tambahan untuk Export Excel
     Route::get('dashboard/events/{event}/export', [EventController::class, 'exportParticipants'])
          ->name('admin.events.export');
+
+Route::middleware(['auth', 'verified'])->prefix('dashboard')->group(function () {
+    // ... (Route Resource events, events.export, events.validate_payment)
+
+    // ROUTE BARU UNTUK DOWNLOAD QR CODE
+    Route::get('participants/qr/download/{token}', [EventController::class, 'downloadQrCode'])
+         ->name('admin.participants.download_qr');
+});
 });
 
 require __DIR__.'/auth.php';
